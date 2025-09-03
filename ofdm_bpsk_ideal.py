@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 
 
 def bpsk_map(bits: np.ndarray) -> np.ndarray:
@@ -33,14 +34,30 @@ def bpsk_demap(symbols: np.ndarray) -> np.ndarray:
     return (np.real(symbols) < 0).astype(int)
 
 
+def parse_args():
+    p = argparse.ArgumentParser(description="Ideal BPSK-OFDM example (no noise)")
+    p.add_argument("--N", type=int, default=4, help="Number of subcarriers (bits per OFDM symbol)")
+    p.add_argument("--cp_len", type=int, default=1, help="Cyclic prefix length")
+    p.add_argument("--bits", type=str, default="1010", help="Bit string to transmit (length must equal N)")
+    return p.parse_args()
+
+
+def bits_from_string(bit_str: str) -> np.ndarray:
+    arr = np.array([1 if c == '1' else 0 for c in bit_str.strip()], dtype=int)
+    return arr
+
+
 def main():
     # Ideal OFDM channel example (no noise, no distortion)
-    N = 4
-    bits = np.array([1, 0, 1, 0], dtype=int)
+    args = parse_args()
+    N = args.N
+    cp_len = args.cp_len
+    bits = bits_from_string(args.bits)
+    if bits.size != N:
+        raise ValueError(f"Provided bits length {bits.size} must equal N={N}")
 
     X = bpsk_map(bits)
     x = ofdm_modulate(X)
-    cp_len = 1
     tx = add_cyclic_prefix(x, cp_len)
     rx = tx.copy()  # Ideal channel
     rx_no_cp = remove_cyclic_prefix(rx, cp_len)
@@ -64,4 +81,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

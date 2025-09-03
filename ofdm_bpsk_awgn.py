@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 
 
 def bpsk_map(bits: np.ndarray) -> np.ndarray:
@@ -72,24 +73,50 @@ def simulate_ber(num_frames: int, N: int, cp_len: int, snr_db: float, rng: np.ra
     return err / total
 
 
+def parse_args():
+    p = argparse.ArgumentParser(description="BPSK-OFDM over AWGN with SNR sweep")
+    p.add_argument("--N", type=int, default=4, help="Number of subcarriers (bits per OFDM symbol)")
+    p.add_argument("--cp_len", type=int, default=1, help="Cyclic prefix length")
+    p.add_argument("--bits", type=str, default="1010", help="Bit string to transmit (length must equal N)")
+    p.add_argument("--snr_list", type=str, default="0,5,10,15,20,30", help="Comma-separated SNRs in dB for demos")
+    p.add_argument("--ber_snr_list", type=str, default="0,2,4,6,8,10,12,15,20,25,30", help="Comma-separated SNRs in dB for BER sweep")
+    p.add_argument("--frames", type=int, default=2000, help="Number of frames for BER per SNR")
+    p.add_argument("--seed", type=int, default=123, help="RNG seed for reproducibility")
+    return p.parse_args()
+
+
+def bits_from_string(bit_str: str) -> np.ndarray:
+    return np.array([1 if c == '1' else 0 for c in bit_str.strip()], dtype=int)
+
+
+def parse_snr_list(s: str) -> list[float]:
+    return [float(x) for x in s.split(',') if x.strip()]
+
+
 def main():
     np.set_printoptions(precision=4, suppress=True)
 
-    # Example using the same deterministic bits and N=4 as the ideal case
-    N = 4
-    cp_len = 1
-    bits = np.array([1, 0, 1, 0], dtype=int)
-    for snr_db in [0, 5, 10, 15, 20, 30]:
-        X, Y, bits_hat = simulate_once(bits, cp_len, snr_db, rng=np.random.default_rng(42))
-        print(f"[AWGN SNR={snr_db:>2} dB] X: {X}, Y: {np.round(Y,4)}, bits_hat: {bits_hat}")
+    args = parse_args()
+    N = args.N
+    cp_len = args.cp_len
+    bits = bits_from_string(args.bits)
+    if bits.size != N:
+        raise ValueError(f"Provided bits length {bits.size} must equal N={N}")
+    demo_snrs = parse_snr_list(args.snr_list)
+    ber_snrs = parse_snr_list(args.ber_snr_list)
+
+    # Demo with fixed bits over various SNRs
+    for snr_db in demo_snrs:
+        X, Y, bits_hat = simulate_once(bits, cp_len, snr_db, rng=np.random.default_rng(args.seed))
+        print(f"[AWGN SNR={snr_db:>4.1f} dB] X: {X}, Y: {np.round(Y,4)}, bits_hat: {bits_hat}")
 
     # BER sweep over multiple frames
-    print("\nBER vs SNR (random bits, N=4):")
-    for snr_db in [0, 2, 4, 6, 8, 10, 12, 15, 20, 25, 30]:
-        ber = simulate_ber(num_frames=2000, N=N, cp_len=cp_len, snr_db=snr_db, rng=np.random.default_rng(123))
-        print(f"  SNR={snr_db:>2} dB -> BER={ber:.5f}")
+    print(f"\nBER vs SNR (random bits, N={N}, frames={args.frames}):")
+    rng = np.random.default_rng(args.seed)
+    for snr_db in ber_snrs:
+        ber = simulate_ber(num_frames=args.frames, N=N, cp_len=cp_len, snr_db=snr_db, rng=rng)
+        print(f"  SNR={snr_db:>4.1f} dB -> BER={ber:.6f}")
 
 
 if __name__ == "__main__":
     main()
-
