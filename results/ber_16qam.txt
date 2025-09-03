@@ -1,0 +1,8 @@
+
+BER vs SNR (MQAM, N=64, frames=1000):
+  SNR= 0.0 dB -> BER=0.288574
+  SNR= 5.0 dB -> BER=0.164727
+  SNR=10.0 dB -> BER=0.058941
+  SNR=15.0 dB -> BER=0.004395
+  SNR=20.0 dB -> BER=0.000004
+  SNR=25.0 dB -> BER=0.000000
